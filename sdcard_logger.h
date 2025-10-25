@@ -20,6 +20,7 @@ extern "C" {
 
 extern logger_interface_t sdcard_logger_interface;
 void sdcard_force_sync(void);
+void sdcard_flush_from_flash(void)
 /* default log filename (change if you want) */
 #define SDCARD_LOG_FILENAME "LOGNEW.TXT"
 

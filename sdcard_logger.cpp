@@ -101,6 +101,20 @@ static void sdcard_force_sync(void) {
     #endif
 }
 
+
+void sdcard_flush_from_flash() {
+    if (!sd_ready) return;
+    File dumpFile = SD.open(SDCARD_LOG_FILENAME, FILE_WRITE);
+    if (!dumpFile) return;
+
+    for (int addr = EEPROM_LOG_START; addr < EEPROM_LOG_END; addr++) {
+        char c = EEPROM.read(addr);
+        dumpFile.write(c);
+    }
+    dumpFile.flush();
+    dumpFile.close();
+}
+
 /* Exported logger_interface_t object */
 logger_interface_t sdcard_logger_interface = {
     .init = sdcard_init,
