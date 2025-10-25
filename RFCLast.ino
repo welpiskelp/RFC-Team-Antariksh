@@ -109,7 +109,6 @@ const int BUF_SIZE = 10;
 float bmpBuffer[BUF_SIZE];
 int bmpIndex = 0;
 float ax,ay,az,gx,gy,gz,tem=0;
-bool redundant_apogee_flag = false;
 
 /* global timestamp variable */
 int payload_timestamp=0;
@@ -549,7 +548,7 @@ void FC_init(){
    // EEPROM.begin(32);
    logger_init();
    logger_register_interface(&com_logger_interface);
-   logger_register_interface(&flash_logger_interface); // replaces sdcard_logger
+   logger_register_interface(&sdcard_logger_interface); // replaces sdcard_logger
    logger_register_interface(&lora_logger_interface);
    /* setup lora */
    // if (!LoRa.begin(433E6)) {
@@ -768,7 +767,7 @@ void loop(){
          shutdown_channels();
 		 if (eep_sd_flag == 1) {
             LOG_INFO("TOUCHDOWN. Flushing EEPROM data to SD card...");
-            flashlogger_flush_to_sd("EE_DUMP.TXT");
+           // flashlogger_flush_to_sd("EE_DUMP.TXT"); //TODO: Flusher
             LOG_INFO("EEPROM flush complete.");
             eep_sd_flag = 0; // Set flag to 0 to prevent re-flushing
          }
