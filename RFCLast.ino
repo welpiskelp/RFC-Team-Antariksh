@@ -50,12 +50,15 @@ COPYRIGHT NOTICE
 #define MOSI 26   // SPI1 MOSI
 
 /*  NEW STATE MACHINE DEFINITIONS  */
-
+// LIFTOFF LOGIC
 #define LIFTOFF_ACCELERATION_THRESHOLD 20.0f // m/s^2 (approx 2 G's, adjust as needed)
 #define LIFTOFF_ALTITUDE_THRESHOLD     50.0f  // meters
+// REEFING LOGIC
 #define MAIN_CHUTE_ALTITUDE            350.0f // meters
+// TOUCHDOWN LOGIC
 #define TOUCHDOWN_ALTITUDE_THRESHOLD   20.0f  // meters (must be stable near ground)
 #define TOUCHDOWN_ACCEL_THRESHOLD      1.5f   // m/s^2 (detects low-G, stable state)
+// REDUNDANT LOGIC
 #define FLIGHT_TIME_THRESHOLD          50.0f // should be between 15.066 seconds and 43.45 seconds HIGHLY ADVISED to not keep it in range of 30s or 40s
 #define REDUNDANT_PARACHUTE_TIME_THRESHOLD 7000 //in milliseconds
 #define PRESSURE_ZERO_LEVEL 10325.0f
@@ -607,6 +610,7 @@ void loop(){
    float angular_rate[3] = {0};
    float gps_lat = 0.0f, gps_lon = 0.0f;
    bool state_changed = false;
+
    gps.encode(Serial8.read());
 
    // Calculate helper variables needed for state logic
@@ -792,7 +796,7 @@ void loop(){
       // 2. Fill the packet with your data
       packet.team_id = "2024-ASI-ROCKETRY-027"; // As defined in your logger.c
       packet.time_stamp = millis() / 1000.0;    // Use rocket's ON-time
-      packet.packet_count = packet_count_num; 
+      packet.packet_count = packet_count_num;
       // make a variable inside lora function such that for every tx , they increase
       packet.altitude = altitude;
       packet.pressure = pressure;
