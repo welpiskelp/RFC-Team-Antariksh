@@ -63,6 +63,7 @@ COPYRIGHT NOTICE
 /* APOGEE Definitions */
 
 #define ALTITUDE_WINDOW_SIZE 400
+#define APOGEE_SAMPLE_RATE_MS 500
 #define SMA_SIZE 10
 #define DESCENT_DETECTION_COUNT 10     // Number of consecutive descending samples
 #define NOISE_THRESHOLD 1.00f          // Altitude change (meters) to ignore as noise
@@ -111,8 +112,9 @@ int payload_timestamp=0;
 int parachute_timestamp=0;
 int liftoff_timestamp=0;
 int redundant_parachute_timestamp=0;
-float  last_log_time = 0;
+float  last_log_time = 0, last_apogee_log=0;
 
+int packet_count_num = 0;
 
 /* finite automata (state machine)*/
 state_t prev_state = STATE_INITIALIZING;
@@ -418,6 +420,7 @@ void redundant_apogee_detect(){
 
 void apogee_detect(){
    float pressure=0;
+
 	float delta = altitude - previous_altitude;
 	if (delta <= (-1)) {
 		previous_altitude = altitude;
@@ -774,6 +777,11 @@ void loop(){
       prev_state = curr_state;
    }
 
+   if(millis() - last_apogee_log > APOGEE_SAMPLE_RATE){
+        last_apogee_log = millis();
+        altitude;
+
+   }
    /* log data periodically */
    if (millis() - last_log_time > LOG_INTERVAL_MS) {
       last_log_time = millis();
@@ -784,7 +792,7 @@ void loop(){
       // 2. Fill the packet with your data
       packet.team_id = "2024-ASI-ROCKETRY-027"; // As defined in your logger.c
       packet.time_stamp = millis() / 1000.0;    // Use rocket's ON-time
-      packet.packet_count = 0; // TODO: You should increment this
+      packet.packet_count = packet_count_num; 
       // make a variable inside lora function such that for every tx , they increase
       packet.altitude = altitude;
       packet.pressure = pressure;
@@ -811,7 +819,7 @@ void loop(){
       // 3. Log the single packet
       // We set 'critical' to false for standard telemetry
       log_telemetry(&packet, false);
-
+      packet_count_num++;
       /* flush the logger */
       logger_flush();
    }
