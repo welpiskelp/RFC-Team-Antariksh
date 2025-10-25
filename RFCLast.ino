@@ -657,7 +657,7 @@ void loop(){
    gps_lat = gps.location.lat();
    gps_lon = gps.location.lng();
 
-
+   battery_status();
 
    /* STATE_LOGIC */
 
@@ -781,11 +781,7 @@ void loop(){
       prev_state = curr_state;
    }
 
-   if(millis() - last_apogee_log > APOGEE_SAMPLE_RATE){
-        last_apogee_log = millis();
-        altitude;
 
-   }
    /* log data periodically */
    if (millis() - last_log_time > LOG_INTERVAL_MS) {
       last_log_time = millis();
@@ -797,11 +793,10 @@ void loop(){
       packet.team_id = "2024-ASI-ROCKETRY-027"; // As defined in your logger.c
       packet.time_stamp = millis() / 1000.0;    // Use rocket's ON-time
       packet.packet_count = packet_count_num;
-      // make a variable inside lora function such that for every tx , they increase
       packet.altitude = altitude;
       packet.pressure = pressure;
       packet.temp = temperature;
-      packet.voltage = 0.0; // TODO: Add your voltage sensor reading
+      packet.voltage = battery_voltage;
 
       /* GNSS Data*/
       packet.gnss_time = gps.time.value();
