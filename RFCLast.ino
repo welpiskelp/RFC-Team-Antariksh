@@ -142,7 +142,6 @@ static unsigned long apogee_ts[APOGEE_BUF_SIZE];
 static int apogee_head = 0;
 static bool apogee_buf_filled = false;
 static unsigned long apogee_last_sample_ms = 0;
-bool apogee_detected = false; // keep your global var or reuse existing one
 
 //TODO: EEPROM
 /* store everything to flash and only store to the sd card towards the end, need to change logger.h*/
@@ -677,7 +676,83 @@ void apogee_update(float current_altitude_agl) {
 }
 
 
+// add a sample (altitude in meters), timestamp in ms
+static void touchr_push_sample(float alt_m, unsigned long now_ms) {
+    touchr_buf[touchr_head] = alt_m;
+    touchr_ts[touchr_head] = now_ms;
+    touchr_head = (touchr_head + 1) % TOUCHR_BUF_SIZE;
+    if (touchr_head == 0) touchr_buf_filled = true;
+}
 
+// number of valid samples currently in buffer
+static int touchr_count() {
+    return touchr_buf_filled ? TOUCHR_BUF_SIZE : touchr_head;
+}
+
+// estimate vertical rate (m/s) between newest and lookback_samples back
+// returns NAN if not enough samples or invalid dt
+static float touchr_rate_mps(int lookback_samples) {
+    int count = touchr_count();
+    if (count <= lookback_samples) return NAN;
+    int newest_idx = (touchr_head - 1 + TOUCHR_BUF_SIZE) % TOUCHR_BUF_SIZE;
+    int old_idx = (newest_idx - lookback_samples + TOUCHR_BUF_SIZE) % TOUCHR_BUF_SIZE;
+    unsigned long dt_ms = touchr_ts[newest_idx] - touchr_ts[old_idx];
+    if (dt_ms == 0) return NAN;
+    float dz = touchr_buf[newest_idx] - touchr_buf[old_idx]; // positive = ascending
+    return dz / (dt_ms / 1000.0f);
+}
+
+// public function to call every loop with current altitude (AGL in meters)
+void touchdown_rate_update(float current_altitude_agl) {
+    if (touchdown_rate_detected) return; // already detected; remove if you want re-arm
+
+    unsigned long now = millis();
+    if ((now - touchr_last_sample_ms) < TOUCHR_SAMPLE_INTERVAL_MS) return;
+    touchr_last_sample_ms = now;
+
+    // push latest alt sample
+    touchr_push_sample(current_altitude_agl, now);
+    int count = touchr_count();
+    if (count < 2) return;
+
+    // We'll compute vertical rate using a small lookback to reduce noise.
+    // Choose lookback_samples as min(2, count-1) or more if needed.
+    int lookback = 2;
+    if (count - 1 < lookback) lookback = count - 1;
+
+    // compute newest rate
+    float rate = touchr_rate_mps(lookback);
+    if (isnan(rate)) return;
+
+    // Now check how many consecutive recent samples have |rate| <= TOUCHR_MAX_RATE_MPS
+    int stable = 0;
+    // We'll step backwards computing rates between successive pairs.
+    // Example: if lookback==2, compare newest with 2-back; then 1-back with 3-back, etc.
+    // Use same lookback for each step for consistency.
+    int newest_idx = (touchr_head - 1 + TOUCHR_BUF_SIZE) % TOUCHR_BUF_SIZE;
+
+    for (int i = 0; i < count - lookback; ++i) {
+        int a_idx = (newest_idx - i + TOUCHR_BUF_SIZE) % TOUCHR_BUF_SIZE;          // newest of the pair
+        int b_idx = (a_idx - lookback + TOUCHR_BUF_SIZE) % TOUCHR_BUF_SIZE;        // older of the pair
+        unsigned long dt_ms = touchr_ts[a_idx] - touchr_ts[b_idx];
+        if (dt_ms == 0) break;
+        float dz = touchr_buf[a_idx] - touchr_buf[b_idx];
+        float r = dz / (dt_ms / 1000.0f); // m/s
+        if (fabs(r) <= TOUCHR_MAX_RATE_MPS) {
+            stable++;
+            if (stable >= TOUCHR_STABLE_COUNT) break;
+        } else {
+            break; // first sample outside band -> stop counting
+        }
+    }
+
+    if (stable >= TOUCHR_STABLE_COUNT) {
+        touchdown_rate_detected = true;
+        // optional: record time/altitude
+        // unsigned long touchdown_time = touchr_ts[newest_idx];
+        // float touchdown_alt = touchr_buf[newest_idx];
+    }
+}
 /*TODO: SETUP*/
 
 void setup(){
@@ -836,6 +911,11 @@ void loop(){
          break;
 
       case STATE_PARACHUTE_EJECTED:
+			touchdown_rate_update(altitude_agl);
+			if(touchdown_rate_detected){
+				flags |= FLAG_TOUCHDOWN_CONFIRMED_BIT;
+      			curr_state = STATE_TOUCHDOWN_CONFIRMED;
+			}
 		 //float delta_touchdown = 0;
 		 //float previous_altitude = altitude_agl;
 		 //int score = 0;
