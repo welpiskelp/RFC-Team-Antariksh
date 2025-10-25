@@ -119,6 +119,11 @@ float  last_log_time = 0, last_apogee_log=0;
 
 int packet_count_num = 0;
 
+/*flags and bools*/
+bool liftoff_acceleration_bool= false;
+bool redundant_apogee_flag = false;
+
+
 /* finite automata (state machine)*/
 state_t prev_state = STATE_INITIALIZING;
 state_t curr_state = STATE_INITIALIZING; //enum
