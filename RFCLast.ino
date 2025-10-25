@@ -80,6 +80,15 @@ COPYRIGHT NOTICE
 #define APOGEE_MIN_DROP_M 2.0f         // require >= 2m drop from peak
 #define APOGEE_NOISE_M 0.5f            // ignore changes smaller than this as noise
 
+/*TOUCHDOWN*/
+#define TOUCHR_SAMPLE_INTERVAL_MS   200   // sample every 200 ms
+#define TOUCHR_BUF_SIZE             12    // keep up to ~2.4s of data @200ms
+#define TOUCHR_STABLE_COUNT         6     // consecutive samples within rate band required
+#define TOUCHR_MAX_RATE_MPS         0.25f // max |vertical rate| (m/s) considered "zero" (noise band)
+#define TOUCHR_MIN_SAMPLE_SEPARATION 1    // min samples back to compute rate (index)
+
+
+
 /*EEPROM*/
 // These memory states are overwritten with each state change
 #define EEPROM_FLAG_ADDR     0  // Can change this
@@ -142,6 +151,14 @@ static unsigned long apogee_ts[APOGEE_BUF_SIZE];
 static int apogee_head = 0;
 static bool apogee_buf_filled = false;
 static unsigned long apogee_last_sample_ms = 0;
+
+// Internal state
+static float touchr_buf[TOUCHR_BUF_SIZE];
+static unsigned long touchr_ts[TOUCHR_BUF_SIZE];
+static int touchr_head = 0;
+static bool touchr_buf_filled = false;
+static unsigned long touchr_last_sample_ms = 0;
+bool touchdown_rate_detected = false; // global flag set on detection
 
 //TODO: EEPROM
 /* store everything to flash and only store to the sd card towards the end, need to change logger.h*/
