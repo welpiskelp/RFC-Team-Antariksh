@@ -73,6 +73,12 @@ COPYRIGHT NOTICE
 #define MIN_TOTAL_DROP 0.5f            // Minimum total drop from the peak (meters)
 #define REQUIRED_STABLE_SAMPLES  300; //For touchdown confirmed(50 = 1 sec)
 
+/*APOGEE NEW*/
+#define APOGEE_SAMPLE_INTERVAL_MS 500   // 0.5s sampling
+#define APOGEE_BUF_SIZE 6               // holds ~3s of samples @ 0.5s
+#define APOGEE_DESCENT_COUNT 3         // consecutive decreasing samples required
+#define APOGEE_MIN_DROP_M 2.0f         // require >= 2m drop from peak
+#define APOGEE_NOISE_M 0.5f            // ignore changes smaller than this as noise
 
 /*EEPROM*/
 // These memory states are overwritten with each state change
@@ -99,6 +105,7 @@ float altitude_window[ALTITUDE_WINDOW_SIZE];
 int window_index = 0;
 bool apogee_detected = false;
 bool  recovered_from_eeprom = false;
+
 
 int reefing_flag, eep_sd_flag = 0;
 float base_altitude, altitude, previous_altitude=0; //prevalti should be given the previous value of alti before it takes the new value
@@ -127,6 +134,15 @@ bool redundant_apogee_flag = false;
 state_t prev_state = STATE_INITIALIZING;
 state_t curr_state = STATE_INITIALIZING; //enum
 state_flags_t flags = 0; // int is just typeef as state_flags_t
+
+
+/* apogee var */
+static float apogee_buf[APOGEE_BUF_SIZE];
+static unsigned long apogee_ts[APOGEE_BUF_SIZE];
+static int apogee_head = 0;
+static bool apogee_buf_filled = false;
+static unsigned long apogee_last_sample_ms = 0;
+bool apogee_detected = false; // keep your global var or reuse existing one
 
 //TODO: EEPROM
 /* store everything to flash and only store to the sd card towards the end, need to change logger.h*/
@@ -582,7 +598,83 @@ void calibrate(){
   LOG_INFO("Calibration complete. Altitude offset: %f", altitude_offset);
 }
 
+/*TODO: APOGEE LOGIC*/
+// helper: add sample (time is millis())
+static void apogee_push_sample(float alti, unsigned long now_ms) {
+    apogee_buf[apogee_head] = alti;
+    apogee_ts[apogee_head] = now_ms;
+    apogee_head = (apogee_head + 1) % APOGEE_BUF_SIZE;
+    if (apogee_head == 0) apogee_buf_filled = true;
+}
 
+// helper: simple SMA over buffer values (only filled entries)
+static float apogee_buffer_max() {
+    int count = apogee_buf_filled ? APOGEE_BUF_SIZE : apogee_head;
+    if (count == 0) return -1e9;
+    float mx = apogee_buf[0];
+    for (int i = 1; i < count; ++i) {
+        if (apogee_buf[i] > mx) mx = apogee_buf[i];
+    }
+    return mx;
+}
+
+// returns true when apogee confirmed (sets global apogee_detected)
+void apogee_update(float current_altitude_agl) {
+    unsigned long now = millis();
+
+    // sample only every SAMPLE_INTERVAL_MS
+    if ((now - apogee_last_sample_ms) < APOGEE_SAMPLE_INTERVAL_MS) {
+        return;
+    }
+    apogee_last_sample_ms = now;
+
+    // push new sample
+    apogee_push_sample(current_altitude_agl, now);
+
+    int count = apogee_buf_filled ? APOGEE_BUF_SIZE : apogee_head;
+    if (count < 2) return; // need at least 2 samples to compare
+
+    // compute peak in buffer and compare to most recent samples
+    float peak = apogee_buffer_max();
+
+    // quick noise check: if difference is tiny, ignore
+    float diff_from_peak = peak - current_altitude_agl;
+    if (diff_from_peak < APOGEE_NOISE_M) {
+        return;
+    }
+
+    // check consecutive decreasing samples ending at the newest entry
+    // build an index of newest sample
+    int newest_idx = (apogee_head - 1 + APOGEE_BUF_SIZE) % APOGEE_BUF_SIZE;
+    int consec_decr = 0;
+    float last_val = apogee_buf[newest_idx];
+
+    // iterate backwards through buffer comparing previous->next
+    for (int i = 1; i < count; ++i) {
+        int idx = (newest_idx - i + APOGEE_BUF_SIZE) % APOGEE_BUF_SIZE;
+        float v = apogee_buf[idx];
+        // treat as decrease if last_val - v >= NOISE threshold
+        if ((v - last_val) > APOGEE_NOISE_M) {
+            // previous value larger than last_val (i.e., ascending into newest) -> not descent here
+            break;
+        }
+        if ((last_val - v) >= APOGEE_NOISE_M) {
+            consec_decr++;
+            last_val = v;
+        } else {
+            // small change ~noise, stop counting
+            break;
+        }
+    }
+
+    // If we have required consecutive decreases AND total drop from peak >= MIN_DROP_M
+    if (consec_decr >= APOGEE_DESCENT_COUNT && diff_from_peak >= APOGEE_MIN_DROP_M) {
+        apogee_detected = true;
+        // Optional: record apogee altitude/time if needed
+        // float apogee_altitude = peak;
+        // unsigned long apogee_time = apogee_ts[newest_idx];
+    }
+}
 
 
 
@@ -692,7 +784,7 @@ void loop(){
 
 		}
 		else{
-		apogee_detect(); // call apogee detect to change the bool value in case we have hit apogee
+		apogee_update(altitude_agl); // call apogee detect to change the bool value in case we have hit apogee
    		if (apogee_detected) {
       		//fire_main_chute1();
       		//apogee_detected = true;

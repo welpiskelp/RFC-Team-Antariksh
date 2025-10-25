@@ -12,7 +12,8 @@
 #include "sdcard_logger.h"
 #include <SD.h>
 #include <Arduino.h>
-
+#define EEPROM_LOG_START 64
+#define EEPROM_LOG_END 1024
 /*
   sdcard_logger using Arduino SD.h and BUILTIN_SDCARD (Teensy).
   - Non-immediate by default (relies on logger_flush()).
@@ -103,16 +104,7 @@ static void sdcard_force_sync(void) {
 
 
 void sdcard_flush_from_flash() {
-    if (!sd_ready) return;
-    File dumpFile = SD.open(SDCARD_LOG_FILENAME, FILE_WRITE);
-    if (!dumpFile) return;
-
-    for (int addr = EEPROM_LOG_START; addr < EEPROM_LOG_END; addr++) {
-        char c = EEPROM.read(addr);
-        dumpFile.write(c);
-    }
-    dumpFile.flush();
-    dumpFile.close();
+   
 }
 
 /* Exported logger_interface_t object */
