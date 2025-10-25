@@ -718,7 +718,7 @@ void loop(){
             	delay(1000);
             	fire_main_chute_1();
 				parachute_timestamp = millis();
-            	//TODO: save the current rtc time and eject the 2nd line when the time is rtc+7seconds
+
                 if(millis()-parachute_timestamp>REDUNDANT_PARACHUTE_TIME_THRESHOLD){
 				fire_main_chute_2();
 			    redundant_parachute_timestamp = millis();
