@@ -33,7 +33,6 @@ COPYRIGHT NOTICE
 #include "com_logger.h"
 #include "sdcard_logger.h"
 #include "lora_logger.h"
-#include "flash_logger.h"
 
 /*PIN'S*/
 #define OFFSET_BMP 1 //BMP Offset FIXME: Change to integer
