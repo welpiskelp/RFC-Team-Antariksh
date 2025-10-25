@@ -666,7 +666,11 @@ void loop(){
 		 calibrate();
          break;
       case STATE_STANDBY:
-         if (total_acceleration > LIFTOFF_ACCELERATION_THRESHOLD && altitude_agl > LIFTOFF_ALTITUDE_THRESHOLD) {
+         if (total_acceleration > LIFTOFF_ACCELERATION_THRESHOLD){
+             liftoff_acceleration_bool = true;
+         }
+
+         if (liftoff_acceleration_bool && altitude_agl > LIFTOFF_ALTITUDE_THRESHOLD) {
             LOG_INFO("LIFTOFF DETECTED! Accel: %f, Alt AGL: %f", total_acceleration, altitude_agl);
 			liftoff_timestamp = millis();
             flags |= FLAG_LIFTOFF_CONFIRMED_BIT;
