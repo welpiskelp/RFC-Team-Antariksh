@@ -400,7 +400,7 @@ void redundant_apogee_detect(){
 
   	for (int i = 1; i < BUF_SIZE; i++) {
    		delay(500);
-		digitalWrite(CS_BMP390, LOW);
+		//digitalWrite(CS_BMP390, LOW);
 		// BMP Read
 		if (!bmp390.performReading()) {
  			 LOG_ERROR("Failed to read from BMP390",-1);
@@ -411,7 +411,7 @@ void redundant_apogee_detect(){
 			 float diff = bmpBuffer[i] - bmpBuffer[i - 1] ;//Calculate Differences
 		     sum_apogee += diff;  // Accumulate Differences
 		}
-		digitalWrite(CS_BMP390, HIGH);
+		//digitalWrite(CS_BMP390, HIGH);
 
 		if(sum_apogee<0) allNegative=true;
 		if(sum_apogee==0) allConstant=true;
@@ -464,7 +464,7 @@ void apogee_detect(){
 	if (delta <= (-1)) {
 		previous_altitude = altitude;
 		delay(500);
-		digitalWrite(CS_BMP390, LOW);
+		//digitalWrite(CS_BMP390, LOW);
 		// BMP Read
 		if (!bmp390.performReading()) {
  			 LOG_ERROR("Failed to read from BMP390",-1);
@@ -477,7 +477,7 @@ void apogee_detect(){
 				apogee_detected = true;
 			 }
 		}
-		digitalWrite(CS_BMP390, HIGH);
+		//digitalWrite(CS_BMP390, HIGH);
 	}
 }
 
@@ -522,8 +522,8 @@ void gps_init(){
 }
 
 void bmp_init(){
-   pinMode(CS_BMP390, OUTPUT);
-   digitalWrite(CS_BMP390, HIGH);
+   //pinMode(CS_BMP390, OUTPUT);
+   //digitalWrite(CS_BMP390, HIGH);
 
    if (!bmp390.begin_SPI(CS_BMP390, &SPI1)) {
       buzzer_beep_code(BUZZER_CODE_INIT_FAIL);
@@ -541,8 +541,8 @@ void bmp_init(){
 }
 
 void lsm_init(){
-   pinMode(CS_LSM, OUTPUT);
-   digitalWrite(CS_LSM, HIGH);
+   //pinMode(CS_LSM, OUTPUT);
+   // digitalWrite(CS_LSM, HIGH);
 
    if (!lsm6dso32.begin_SPI(CS_LSM, &SPI1)) {
       LOG_ERROR("Failed to initialize LSM6DSO32 SPI!");
@@ -567,9 +567,9 @@ void altitude_window_init(){
 }
 
 void FC_init(){
-   SPI1.setSCK(SCK);
-   SPI1.setMISO(MISO);
-   SPI1.setMOSI(MOSI);
+   //SPI1.setSCK(SCK);
+   //SPI1.setMISO(MISO);
+   //SPI1.setMOSI(MOSI);
    SPI1.begin();
 
    channel_init(); // Initialize all Pyro Channels
@@ -595,9 +595,9 @@ void FC_init(){
 void calibrate(){
   LOG_INFO("Calibrating altitude...");
   float sum_alti = 0;
-  for (int j = 0; j < 30; j++) {
+  for (int j = 0; j < 100; j++) {
     // We can't use read_calibrated_altitude() because offset isn't set yet
-    digitalWrite(CS_BMP390, LOW);
+    //digitalWrite(CS_BMP390, LOW);
     if (!bmp390.performReading()) {
         LOG_ERROR("Failed to read from BMP390 during calibration", -1);
         j--; // Retry the reading
@@ -605,12 +605,12 @@ void calibrate(){
         continue;
     }
     float pressure = bmp390.readPressure();
-    digitalWrite(CS_BMP390, HIGH);
+    //digitalWrite(CS_BMP390, HIGH);
 
     sum_alti += bmp_pressure_to_altitude(PRESSURE_ZERO_LEVEL, pressure);
     delay(100);
   }
-  altitude_offset = sum_alti / 30.0;
+  altitude_offset = sum_alti / 100.0;
   LOG_INFO("Calibration complete. Altitude offset: %f", altitude_offset);
 }
 
@@ -805,8 +805,8 @@ void loop(){
    float altitude_agl = altitude - altitude_offset;
    float total_acceleration = sqrt(acceleration[0] * acceleration[0] + acceleration[1] * acceleration[1] + acceleration[2] * acceleration[2]);
 
-   digitalWrite(CS_LSM, HIGH);
-   digitalWrite(CS_BMP390, LOW);
+   //digitalWrite(CS_LSM, HIGH);
+   //digitalWrite(CS_BMP390, LOW);
 
 
    // BMP Read
@@ -817,14 +817,14 @@ void loop(){
       pressure=bmp390.readPressure();
       altitude = bmp_pressure_to_altitude(PRESSURE_ZERO_LEVEL, pressure);
    }
-   digitalWrite(CS_BMP390, HIGH);
+   //digitalWrite(CS_BMP390, HIGH);
 
    /* store altitude in sliding window */
    altitude_window[window_index] = altitude_agl;
    window_index = (window_index + 1) % ALTITUDE_WINDOW_SIZE;
 
    /* read imu  */
-   digitalWrite(CS_LSM, LOW);
+   //digitalWrite(CS_LSM, LOW);
    //
    sensors_event_t accel, gyro;
    lsm6dso32.getAccelerometerSensor()->getEvent(&accel);
@@ -839,7 +839,7 @@ void loop(){
    angular_rate[1] = gyro.gyro.y;
    angular_rate[2] = gyro.gyro.z;
    //
-   digitalWrite(CS_LSM, HIGH);
+   //digitalWrite(CS_LSM, HIGH);
 
    // GPS Read
    gps_lat = gps.location.lat();

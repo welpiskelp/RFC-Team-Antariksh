@@ -34,9 +34,9 @@ static logger_interface_t *immediate_loggers[MAX_LOGGER_INTERFACES];
 static size_t              num_immediate = 0;
 
 /* NEW: EEPROM logging state */
-static logger_interface_t* sd_logger = NULL;
-static uint16_t eeprom_base_addr = 0;
-static uint16_t eeprom_next_addr = 0;
+//static logger_interface_t* sd_logger = NULL;
+//static uint16_t eeprom_base_addr = 0;
+//static uint16_t eeprom_next_addr = 0;
 
 
 /* ring buffers */
@@ -111,15 +111,15 @@ static void write_to_non_immediate(const char *msg, size_t len) {
 }
 
 void logger_init(void) {
-    //ring_init(&crit_ring, crit_buff, LOG_ENTRY_SIZE, CRIT_BUFFER_ENTRIES);
-    //ring_init(&log_ring,  log_buff,  LOG_ENTRY_SIZE, LOG_BUFFER_ENTRIES);
+    ring_init(&crit_ring, crit_buff, LOG_ENTRY_SIZE, CRIT_BUFFER_ENTRIES);
+    ring_init(&log_ring,  log_buff,  LOG_ENTRY_SIZE, LOG_BUFFER_ENTRIES);
     num_registered = 0;
     num_immediate = 0;
     memset(crit_buff, 0, sizeof(crit_buff));
     memset(log_buff,  0, sizeof(log_buff));
-    sd_logger = NULL;
-    eeprom_base_addr = 0;
-    eeprom_next_addr = 0;
+    //sd_logger = NULL;
+    //eeprom_base_addr = 0;
+    //eeprom_next_addr = 0;
 }
 
 
@@ -134,12 +134,12 @@ bool logger_register_interface(logger_interface_t *interface) {
         if (num_immediate < MAX_LOGGER_INTERFACES) {
             immediate_loggers[num_immediate++] = interface;
         }
-        else {
+        /*else {
             // NEW: Check if this is the sdcard logger (which is non-immediate)
             // This is a bit of a hack, but effective.
             if (interface == &sdcard_logger_interface) {
                 sd_logger = interface;
-        }
+        }*/
     }
     if (interface->init) interface->init();
     return true;
@@ -147,7 +147,7 @@ bool logger_register_interface(logger_interface_t *interface) {
 }
 
 void logger_flush(void) {
-    /*
+
     char entry[LOG_ENTRY_SIZE];
     while (ring_dequeue_entry(&crit_ring, entry)) {
         entry[LOG_ENTRY_SIZE - 1] = '\0';
@@ -157,10 +157,10 @@ void logger_flush(void) {
         entry[LOG_ENTRY_SIZE - 1] = '\0';
         write_to_non_immediate(entry, strnlen(entry, LOG_ENTRY_SIZE));
     }
-    */
+
 }
 
-    /* ---------- NEW EEPROM Functions ---------- */
+    /* ---------- NEW EEPROM Functions ----------
 
     void logger_init_eeprom(uint16_t base_addr, uint16_t next_addr) {
         eeprom_base_addr = base_addr;
@@ -204,7 +204,7 @@ void logger_flush(void) {
         // After writing all data, force sync the SD card file
         sdcard_force_sync();
     }
-
+*/
 /* ---------- TELEMETRY DATA FORMAT LOGGING ---------- */
 /* The telemetry log will follow the format specified in the Data Budget table */
 /*
@@ -248,7 +248,7 @@ static void logger_emit(bool critical, const telemetry_data_t *data) {
         }
     }
 
-   /* if (critical) {
+    if (critical) {
         if (!ring_enqueue_entry(&crit_ring, buf)) {
             char tmp[LOG_ENTRY_SIZE];
             if (ring_dequeue_entry(&crit_ring, tmp)) {
@@ -263,14 +263,15 @@ static void logger_emit(bool critical, const telemetry_data_t *data) {
             (void)ring_enqueue_entry(&log_ring, buf);
         }
     }
-*/
+
     /*
      * 3. NEW: Write to EEPROM
-     */
+
     if (eeprom_base_addr != 0 && (eeprom_next_addr + LOG_ENTRY_SIZE) <= EEPROM.length()) {
         EEPROM.put(eeprom_next_addr, buf);
         eeprom_next_addr += LOG_ENTRY_SIZE;
-    }
+    */
+	}
 }
 
 /* ---------- Public function to log telemetry ---------- */

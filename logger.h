@@ -43,19 +43,19 @@ void logger_flush(void);
  * @param next_addr The address to write the *next* log entry
  * (e.g., EEPROM_DATA_ADDR or a recovered address).
  */
-void logger_init_eeprom(uint16_t base_addr, uint16_t next_addr);
+//void logger_init_eeprom(uint16_t base_addr, uint16_t next_addr);
 
 /**
  * @brief Gets the next available EEPROM write address.
  * @return The 16-bit EEPROM address.
  */
-uint16_t logger_get_next_eeprom_addr(void);
+//uint16_t logger_get_next_eeprom_addr(void);
 
 /**
  * @brief Reads all log data from EEPROM and writes it to the SD card.
  * This function will call the registered SD card logger's write function.
  */
-void flush_eeprom_to_sd(void);
+//void flush_eeprom_to_sd(void);
 
 /* logging APIs (source-location aware) */
 void log_fatal(const char* file, const char *func, int line, const char *fmt, ...);
